@@ -28,10 +28,8 @@ home_values = full_data[full_data['category'] == 'Home values'].copy()
 inv_sales = full_data[full_data['category'] == 'Inventory and sales'].copy()
 by_region_type_rentals = rentals[rentals['region_type'] == 'zip'].copy()
 by_region_type_home_values = rentals[rentals['region_type'] == 'zip'].copy()
-by_zip_rentals = by_region_type_rentals[by_region_type_rentals['region'] in 80227].copy()
-by_zip_home_values = by_region_type_home_values[by_region_type_home_values['region'] in 80227].copy()
-print(by_zip_rentals)
-print(by_zip_home_values)
+
+
 #get mean, median by year for each category
 '''rentals_mean_median = get_mean_median_per_year(rentals)
 print(rentals_mean_median)
