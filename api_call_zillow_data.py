@@ -1,21 +1,19 @@
 import pandas as pd
 import nasdaqdatalink
 import zipfile
-import pymssql
+from os import getenv
+from dotenv import load_dotenv
+from pyodbc import connect
 import hashlib
-import csv
 
-NASDAQ_DATA_LINK_API_KEY =   nasdaqdatalink.read_key('/Users/tylerpruitt/Desktop/ZILLOW/data_link_apikey.rtf')
+#establish nasdaq api key to pull data
+NASDAQ_DATA_LINK_API_KEY = nasdaqdatalink.read_key('/Users/tylerpruitt/Desktop/ZILLOW/data_link_apikey.rtf')
+print('NASDAQ API key set to local environment variable')
 
-def define_api_key():
-    nasdaqdatalink.ApiConfig.api_key = nasdaqdatalink.read_key('/Users/tylerpruitt/Desktop/ZILLOW/data_link_apikey.rtf')
-
-def connect_to_sql_server():
-    connection = pd.read_csv('/Users/tylerpruitt/Desktop/ZILLOW/account_info.csv')
-    connection = connection.to_dict('list')
-    con=pymssql.connect(connection['host'][0], connection['username'][0], connection['password'][0], connection['db'][0])
-    cursor=con.cursor()
-    return cursor
+#establish sql server connection
+load_dotenv()
+conn = connect(getenv("SQL_CONNECTION_STRING"))
+print('Connected to SQL Server')
 
 
 def extract_from_NASDAQ(big_data_table: str): 
@@ -32,11 +30,14 @@ def extract_from_NASDAQ(big_data_table: str):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
     data = pd.read_csv(f'{edited_filename}.csv', dtype={'indicator_id':'category', 'region_id':'category'}, parse_dates=['date'])
+    print("Data extracted from NASDAQ")
     return data
 
-def read_data_from_SQL(table_name: str, cursor):
+
+def read_data_from_SQL(table_name: str, connection):
     sql_query = f"SELECT * FROM {table_name}"
-    sql_data = pd.read_sql(sql_query, cursor)
+    sql_data = pd.read_sql(sql_query, connection)
+    print("Data received from SQL Server")
     return sql_data
 
 def get_from_NASDAQ(table_code: str):
@@ -49,20 +50,15 @@ def compare_data(NASDAQ_data: pd.DataFrame, sql_data: pd.DataFrame):
     NASDAQ_hashes = row_hash(NASDAQ_data)
     sql_hashes = row_hash(sql_data)
     new_rows = NASDAQ_data[~NASDAQ_hashes.isin(sql_hashes)]
+    print("Differences calculated")
     return new_rows
 
 def clean_file(df: pd.DataFrame):
     df = df.replace({",":""}, regex=True)
+    print("File cleaned.")
     return df
 
-print("API Key defined")
-#zillow_data_NQ = extract_from_NASDAQ('ZILLOW/DATA')
-#zillow_data_NQ = pd.read_csv('/Users/tylerpruitt/Desktop/ZILLOW/ZILLOW_DATA.csv', dtype={'indicator_id':'category','region_id':'category'},parse_dates=['date'])
-print("Data extracted from NASDAQ")
-cursor = connect_to_sql_server()
-print("Connected to SQL Server")
-zillow_data_SQL = read_data_from_SQL('[zillow-data-all].[dbo].[ZILLOW_DATA]', cursor)
-print("Data received from SQL Server")
+zillow_data_NQ = extract_from_NASDAQ('ZILLOW/DATA')
+zillow_data_SQL = read_data_from_SQL('[zillow-data-all].[dbo].[ZILLOW_DATA]', conn)
 new_rows = compare_data(zillow_data_NQ, zillow_data_SQL)
-print("Differences calculated")
 print(new_rows)
